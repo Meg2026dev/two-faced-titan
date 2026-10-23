@@ -1,0 +1,19 @@
+TWO-FACED TITAN
+===============
+
+A colossal living coin-face Titan challenges you to a duel of heads and tails!
+
+The Titan perpetually flips between HEADS (vulnerable gold face, glowing rune weak-point) and TAILS (armored silver backplate that launches attacks). TAP to strike during HEADS windows. DRAG to dodge telegraphed slams, projectiles, and lunges during TAILS.
+
+FEATURES:
+- 3 escalating Zones with faster flips and deadlier attacks
+- MINT COMBO meter — land 5 hits for a massive MINT BREAK
+- NEAR-MISS bonuses (+50 pts) for risky late dodges
+- Zone bonuses, medals (Bronze/Silver/Gold), high score chase
+- Full touch + mouse support (mobile & desktop)
+- Procedural Web Audio soundtrack & SFX (music/SFX toggleable)
+- Title, How to Play, Pause (music/SFX toggles, resume, back), Settings, Game Over/Victory screens
+
+THEME: Coin Flip (Gameotron Jam)
+Controls: Tap to strike, Drag to dodge. Works on smartphone and PC browser.
+Genre: Action Boss-Battler / Arcade

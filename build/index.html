@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Two-Faced Titan</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1A1030;touch-action:none;-webkit-user-select:none;user-select:none}
+canvas{display:block;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);image-rendering:auto}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+"use strict";
+// ===== TWO-FACED TITAN — Gameotron pipeline, Theme: Coin Flip =====
+// Single-file vanilla JS + Canvas 2D. Touch + Mouse simultaneous.
+
+const W=800,H=1200;
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+
+// --- Responsive scaling ---
+function resize(){
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const scale=Math.min(vw/W,vh/H);
+  canvas.style.width=(W*scale)+'px';
+  canvas.style.height=(H*scale)+'px';
+  canvas.width=W;canvas.height=H;
+}
+window.addEventListener('resize',resize);
+resize();
+
+// --- localStorage helpers ---
+function loadLS(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}}
+function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+// --- Audio (Web Audio API, procedural) ---
+let audioCtx=null,masterGain=null,musicGain=null,sfxGain=null;
+let musicEnabled=loadLS('tt_music',true),sfxEnabled=loadLS('tt_sfx',true);
+let musicPlaying=false,musicInterval=null,musicStep=0,currentZoneMusic=1;
+
+function initAudio(){
+  if(audioCtx)return;
+  try{
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    masterGain=audioCtx.createGain();masterGain.connect(audioCtx.destination);
+    musicGain=audioCtx.createGain();musicGain.connect(masterGain);
+    sfxGain=audioCtx.createGain();sfxGain.connect(masterGain);
+    musicGain.gain.value=musicEnabled?0.3:0;
+    sfxGain.gain.value=sfxEnabled?0.5:0;
+  }catch(e){}
+}
+function resumeAudio(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}
+
+function playTone(freq,dur,type,vol,dest){
+  if(!audioCtx||!dest||dest.gain.value<=0)return;
+  try{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=type||'square';o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.2,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.connect(g);g.connect(dest);
+    o.start();o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function playNoise(dur,vol,filterFreq,dest){
+  if(!audioCtx||!dest||dest.gain.value<=0)return;
+  try{
+    const len=audioCtx.sampleRate*dur;
+    const buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    const src=audioCtx.createBufferSource();src.buffer=buf;
+    const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.value=filterFreq||2000;
+    const g=audioCtx.createGain();
+    g.gain.setValueAtTime(vol||0.3,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    src.connect(f);f.connect(g);g.connect(dest);
+    src.start();
+  }catch(e){}
+}
+
+const SFX={
+  flipSpin(){playNoise(0.3,0.15,1500,sfxGain)},
+  flipLand(){playTone(80,0.15,'sine',0.4,sfxGain);playTone(800,0.1,'triangle',0.15,sfxGain)},
+  strikeHit(){playNoise(0.08,0.3,3000,sfxGain);playTone(600,0.08,'square',0.15,sfxGain);playTone(900,0.06,'square',0.1,sfxGain)},
+  deflect(){playTone(400,0.08,'triangle',0.12,sfxGain)},
+  telegraphHum(){playTone(100,0.8,'sawtooth',0.05,sfxGain)},
+  telegraphPing(){playTone(1200,0.1,'triangle',0.2,sfxGain)},
+  nearMiss(){playNoise(0.15,0.2,4000,sfxGain);playTone(1400,0.1,'sine',0.15,sfxGain);playTone(1800,0.08,'sine',0.1,sfxGain)},
+  mintBreak(){playNoise(0.4,0.4,5000,sfxGain);playTone(523,0.3,'square',0.2,sfxGain);playTone(659,0.3,'square',0.15,sfxGain);playTone(784,0.4,'square',0.2,sfxGain)},
+  playerHit(){playNoise(0.2,0.3,800,sfxGain);playTone(150,0.2,'sawtooth',0.2,sfxGain)},
+  dodge(){playNoise(0.1,0.1,2000,sfxGain)},
+  uiClick(){playTone(1000,0.05,'square',0.15,sfxGain);playNoise(0.03,0.1,5000,sfxGain)},
+  uiOpen(){playNoise(0.12,0.1,1200,sfxGain)},
+  zoneTransition(){playTone(300,0.3,'sine',0.2,sfxGain);playTone(450,0.4,'sine',0.15,sfxGain);playTone(150,0.5,'sine',0.25,sfxGain)},
+  victory(){playTone(523,0.2,'square',0.2,sfxGain);playTone(659,0.2,'square',0.2,sfxGain);playTone(784,0.2,'square',0.2,sfxGain);playTone(1047,0.5,'square',0.25,sfxGain)},
+  gameOver(){playTone(400,0.3,'sawtooth',0.15,sfxGain);playTone(300,0.4,'sawtooth',0.15,sfxGain);playTone(200,0.6,'sawtooth',0.2,sfxGain)}
+};
+
+// Simple music sequencer
+const musicPatterns={
+  1:[[0,1,0,0,1,0,0,1,0,1,0,0,1,0,1,0],[220,0,0,0,277,0,0,0,220,0,0,0,330,0,0,0]],
+  2:[[1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,0],[220,0,262,0,277,0,330,0,220,0,262,0,349,0,330,0]],
+  3:[[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[110,110,165,110,220,110,165,110,110,110,165,220,277,220,165,110]]
+};
+function startMusic(){
+  if(musicPlaying||!audioCtx)return;
+  musicPlaying=true;musicStep=0;
+  musicInterval=setInterval(()=>{
+    if(!musicEnabled||!musicGain||musicGain.gain.value<=0)return;
+    const pat=musicPatterns[currentZoneMusic]||musicPatterns[1];
+    const s=musicStep%16;
+    if(pat[0][s])playTone(60,0.1,'sine',0.3,musicGain);
+    if(pat[1][s])playTone(pat[1][s],0.15,'triangle',0.12,musicGain);
+    musicStep++;
+  },125);
+}
+function stopMusic(){musicPlaying=false;if(musicInterval){clearInterval(musicInterval);musicInterval=null}}
+function setMusicEnabled(v){musicEnabled=v;saveLS('tt_music',v);if(musicGain)musicGain.gain.value=v?0.3:0;if(v)startMusic()}
+function setSfxEnabled(v){sfxEnabled=v;saveLS('tt_sfx',v);if(sfxGain)sfxGain.gain.value=v?0.5:0}
+
+// --- Colors ---
+const COL={
+  gold:'#FFD700',silver:'#C0C0C0',bg:'#2D1B4E',amber:'#FFA500',red:'#FF4444',
+  teal:'#00CED1',white:'#FFFFFF',outline:'#1A1030',blue:'#4169E1',hpRed:'#E74C3C',
+  emerald:'#50C878',crimson:'#8B0000',darkBg:'#1A1030'
+};
+
+// --- Game State Machine ---
+let gameState='TITLE'; // TITLE, HOW_TO_PLAY, PLAYING, PAUSED, SETTINGS, ZONE_TRANSITION, GAME_OVER, VICTORY
+let returnState='TITLE'; // for How to Play / Settings back
+
+// --- Player ---
+const player={x:W/2,y:H-180,w:44,h:44,hp:3,maxHp:3,speed:6,vx:0,iFrames:0,dodgeRoll:0};
+// --- Titan ---
+const titan={x:W/2,y:320,r:160,hp:100,maxHp:100,state:'HEADS',flipTimer:0,flipDuration:2.5,headsWindow:1.8,isFlipping:false,flipProgress:0,feintArmed:false,feintTriggered:false,squash:0};
+// --- Combat ---
+let score=0,highScore=loadLS('tt_highscore',0),combo=0,maxCombo=5,comboTimer=0,comboDecay=5,mintBreakMeter=0;
+let zone=1,zoneTimer=0,zoneTransitionTimer=0;
+let nearMissWindow=0;
+// Juice (Phase 5.5) — all togglable via juiceEnabled
+let juiceEnabled=true;
+let titanHitFlash=0; // frames of white flash on titan when struck
+let zoneFlashAlpha=0; // fullscreen flash on zone transition
+let displayedTitanHp=titan.hp; // smooth-drain HP bar
+let lastDodgeDustX=0; // dust puff trail throttle
+let shakeX=0,shakeY=0,shakeMag=0;
+let hitStop=0;
+let gameStateTimer=0;
+let tutorialTimer=0,showTutorial=false;
+
+// --- Attack system ---
+let attacks=[]; // {type,x,y,r,warnTime,active,duration,timer,lineX1,lineX2}
+let nextAttackTime=2;
+
+// --- Particles & Popups ---
+let particles=[]; // {x,y,vx,vy,life,maxLife,color,size,type}
+let popups=[]; // {x,y,text,life,maxLife,color,scale,vy}
+let floatingCoins=[]; // ambient {x,y,speed,phase}
+
+// --- Buttons (screen-space) ---
+let buttons=[]; // {x,y,w,h,label,action,hover}
+
+// --- Input ---
+let pointerDown=false,pointerX=W/2,pointerY=H/2,isDragging=false,dragStartX=0;
+let lastTapTime=0;
+
+function screenToCanvas(clientX,clientY){
+  const rect=canvas.getBoundingClientRect();
+  return{x:(clientX-rect.left)/rect.width*W,y:(clientY-rect.top)/rect.height*H};
+}
+
+function onPointerDown(x,y){
+  pointerDown=true;isDragging=true;dragStartX=x;pointerX=x;pointerY=y;
+  initAudio();resumeAudio();
+  // Button hit test first
+  for(const b of buttons){
+    if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){
+      SFX.uiClick();b.action();return;
+    }
+  }
+  if(gameState==='PLAYING'){
+    // Tap-to-strike if in upper 75% and HEADS
+    if(y<H*0.75&&titan.state==='HEADS'&&!titan.isFlipping){
+      doStrike();
+    }
+  }
+}
+function onPointerMove(x,y){
+  pointerX=x;pointerY=y;
+  if(gameState==='PLAYING'&&isDragging){
+    // Drag to move player horizontally
+    const dx=x-dragStartX;
+    player.vx=dx*0.15;
+  }
+}
+function onPointerUp(){
+  pointerDown=false;isDragging=false;player.vx=0;
+}
+
+// Mouse
+canvas.addEventListener('mousedown',e=>{const p=screenToCanvas(e.clientX,e.clientY);onPointerDown(p.x,p.y)});
+canvas.addEventListener('mousemove',e=>{const p=screenToCanvas(e.clientX,e.clientY);onPointerMove(p.x,p.y)});
+canvas.addEventListener('mouseup',()=>onPointerUp());
+// Touch
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];const p=screenToCanvas(t.clientX,t.clientY);onPointerDown(p.x,p.y)},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];const p=screenToCanvas(t.clientX,t.clientY);onPointerMove(p.x,p.y)},{passive:false});
+canvas.addEventListener('touchend',e=>{e.preventDefault();onPointerUp()},{passive:false});
+
+// --- Buttons ---
+function addBtn(x,y,w,h,label,action){buttons.push({x,y,w,h,label,action,hover:false})}
+
+function buildTitleButtons(){
+  buttons=[];
+  addBtn(W/2-120,500,240,70,'START',()=>{SFX.uiOpen();startGame()});
+  addBtn(W/2-120,600,240,70,'HOW TO PLAY',()=>{SFX.uiOpen();returnState='TITLE';gameState='HOW_TO_PLAY'});
+  addBtn(W-70,30,50,50,'⚙',()=>{SFX.uiOpen();returnState='TITLE';gameState='SETTINGS'});
+}
+function buildPauseButtons(){
+  buttons=[];
+  addBtn(W/2-140,400,280,60,'RESUME',()=>{SFX.uiClick();gameState='PLAYING'});
+  addBtn(W/2-140,480,280,60,'HOW TO PLAY',()=>{SFX.uiOpen();returnState='PAUSED';gameState='HOW_TO_PLAY'});
+  addBtn(W/2-140,560,130,60,musicEnabled?'MUSIC: ON':'MUSIC: OFF',()=>{setMusicEnabled(!musicEnabled);SFX.uiClick()});
+  addBtn(W/2+10,560,130,60,sfxEnabled?'SFX: ON':'SFX: OFF',()=>{setSfxEnabled(!sfxEnabled);SFX.uiClick()});
+  addBtn(W/2-140,640,280,60,'BACK TO TITLE',()=>{SFX.uiClick();gameState='TITLE';stopMusic()});
+  addBtn(W-70,30,50,50,'⚙',()=>{SFX.uiOpen();returnState='PAUSED';gameState='SETTINGS'});
+}
+function buildSettingsButtons(){
+  buttons=[];
+  addBtn(W/2-140,400,280,60,musicEnabled?'MUSIC: ON':'MUSIC: OFF',()=>{setMusicEnabled(!musicEnabled);SFX.uiClick()});
+  addBtn(W/2-140,480,280,60,sfxEnabled?'SFX: ON':'SFX: OFF',()=>{setSfxEnabled(!sfxEnabled);SFX.uiClick()});
+  addBtn(W/2-140,560,280,60,'RESET DATA',()=>{localStorage.removeItem('tt_highscore');localStorage.removeItem('tt_music');localStorage.removeItem('tt_sfx');highScore=0;musicEnabled=true;sfxEnabled=true;if(musicGain)musicGain.gain.value=0.3;if(sfxGain)sfxGain.gain.value=0.5;SFX.uiClick()});
+  addBtn(W/2-140,640,280,60,'CREDITS',()=>{SFX.uiClick();alert('Two-Faced Titan\nA Gameotron Jam Game\nTheme: Coin Flip\n\nBuilt with vanilla JS + Canvas\n\nThanks for playing!')});
+  addBtn(W/2-140,720,280,60,'BACK',()=>{SFX.uiClick();gameState=returnState});
+}
+function buildHowToPlayButtons(){
+  buttons=[];
+  addBtn(W/2-100,H-140,200,60,'GOT IT!',()=>{SFX.uiClick();gameState=returnState});
+}
+function buildGameOverButtons(){
+  buttons=[];
+  addBtn(W/2-120,700,240,70,'RETRY',()=>{SFX.uiClick();startGame()});
+  addBtn(W/2-120,800,240,70,'TITLE',()=>{SFX.uiClick();gameState='TITLE';stopMusic()});
+}
+function buildVictoryButtons(){
+  buttons=[];
+  addBtn(W/2-120,850,240,70,'REPLAY',()=>{SFX.uiClick();startGame()});
+  addBtn(W/2-120,950,240,70,'TITLE',()=>{SFX.uiClick();gameState='TITLE';stopMusic()});
+}
+function buildPlayingButtons(){
+  buttons=[];
+  addBtn(W-70,30,50,50,'| |',()=>{SFX.uiClick();gameState='PAUSED'});
+}
+
+// --- Game init ---
+function startGame(){
+  player.x=W/2;player.hp=player.maxHp;iFramesReset();
+  titan.hp=titan.maxHp;titan.state='HEADS';titan.flipTimer=0;titan.isFlipping=false;titan.flipProgress=0;
+  titan.flipDuration=2.5;titan.feintArmed=false;titan.feintTriggered=false;displayedTitanHp=titan.maxHp;
+  score=0;combo=0;comboTimer=0;mintBreakMeter=0;
+  zone=1;zoneTimer=0;currentZoneMusic=1;
+  attacks=[];particles=[];popups=[];
+  nextAttackTime=2;tutorialTimer=0;showTutorial=true;
+  gameState='PLAYING';
+  buildPlayingButtons();
+  startMusic();
+}
+function iFramesReset(){player.iFrames=0}
+
+function doStrike(){
+  if(hitStop>0)return;
+  // Only in HEADS, not flipping
+  if(titan.state!=='HEADS'||titan.isFlipping)return;
+  // Combo cap per window: max 3 strikes in short windows handled by timing
+  combo=Math.min(combo+1,maxCombo);
+  comboTimer=comboDecay;
+  const dmg=1+ (combo>=3?1:0); // bonus damage at high combo
+  titan.hp=Math.max(0,titan.hp-dmg);
+  const pts=100*combo;
+  score+=pts;
+  mintBreakMeter++;
+  addPopup(titan.x,titan.y-60,'+'+pts,COL.gold,1.2+combo*0.1);
+  spawnParticles(titan.x,titan.y-40,12,COL.gold,'spark');
+  SFX.strikeHit();
+  // Screenshake
+  shakeMag=Math.min(shakeMag+4,8);
+  // Hit-stop
+  hitStop=Math.max(hitStop,3);
+  if(juiceEnabled)titanHitFlash=6; // 6-frame white flash
+  // MINT BREAK
+  if(mintBreakMeter>=5){
+    mintBreakMeter=0;
+    const mbDmg=Math.round(titan.maxHp*0.15);
+    titan.hp=Math.max(0,titan.hp-mbDmg);
+    score+=500;
+    addPopup(titan.x,titan.y-80,'MINT BREAK! +500',COL.teal,2);
+    spawnParticles(titan.x,titan.y,30,COL.gold,'confetti');
+    spawnParticles(titan.x,titan.y,20,COL.teal,'confetti');
+    shakeMag=12;hitStop=8;
+    SFX.mintBreak();
+  }
+  // Check zone transition
+  checkZoneTransition();
+  // Check victory
+  if(titan.hp<=0)victory();
+}
+
+function checkZoneTransition(){
+  const pct=titan.hp/titan.maxHp;
+  let newZone=1;
+  if(pct<=0.33)newZone=3;else if(pct<=0.66)newZone=2;
+  if(newZone>zone){
+    zone=newZone;
+    currentZoneMusic=zone;
+    zoneTransitionTimer=2;
+    if(juiceEnabled)zoneFlashAlpha=1;
+    gameState='ZONE_TRANSITION';
+    // Apply zone params
+    if(zone===2){titan.flipDuration=1.8;titan.headsWindow=1.2;comboDecay=3;SFX.zoneTransition()}
+    if(zone===3){titan.flipDuration=1.2;titan.headsWindow=0.8;comboDecay=2;titan.feintArmed=true;SFX.zoneTransition()}
+    // Zone bonus
+    score+=200;
+    addPopup(W/2,H/2,'ZONE '+zone+' +200',COL.teal,2);
+    spawnParticles(W/2,H/2,25,COL.teal,'confetti');
+    player.hp=player.maxHp; // breather heal
+    player.iFrames=90; // 1.5s invuln
+  }
+}
+
+function victory(){
+  gameState='VICTORY';
+  score+=1000+player.hp*200;
+  if(score>highScore){highScore=score;saveLS('tt_highscore',highScore)}
+  spawnParticles(W/2,H/2,50,COL.gold,'confetti');
+  spawnParticles(W/2,H/2,40,COL.teal,'confetti');
+  SFX.victory();stopMusic();
+  buildVictoryButtons();
+}
+function gameOver(){
+  gameState='GAME_OVER';
+  if(score>highScore){highScore=score;saveLS('tt_highscore',highScore)}
+  SFX.gameOver();stopMusic();
+  buildGameOverButtons();
+}
+
+function addPopup(x,y,text,color,scale){
+  if(popups.length>=8)popups.shift();
+  popups.push({x,y,text,life:60,maxLife:60,color,scale:scale||1,vy:-1.5});
+}
+function spawnParticles(x,y,count,color,type){
+  for(let i=0;i<count&&particles.length<50;i++){
+    const a=Math.random()*Math.PI*2;
+    const sp=type==='confetti'?2+Math.random()*4:1+Math.random()*3;
+    particles.push({
+      x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1,
+      life:type==='confetti'?45:30,maxLife:type==='confetti'?45:30,
+      color,size:type==='confetti'?3+Math.random()*4:2+Math.random()*3,type
+    });
+  }
+}
+
+// --- Attacks ---
+function spawnAttack(){
+  if(zone===1){
+    // Coin Slam AoE circle near player
+    attacks.push({type:'slam',x:player.x,y:player.y,r:100,warnTime:72,active:false,duration:0,timer:0});
+    SFX.telegraphHum();
+  }else if(zone===2){
+    const r=Math.random();
+    if(r<0.5){
+      attacks.push({type:'slam',x:player.x,y:player.y,r:90,warnTime:54,active:false,duration:0,timer:0});
+      SFX.telegraphHum();
+    }else{
+      // Coin projectile volley (3-way spread from titan)
+      for(let i=-1;i<=1;i++){
+        attacks.push({type:'projectile',x:titan.x,y:titan.y,r:18,warnTime:0,active:true,duration:120,timer:0,vx:i*2.5,vy:6});
+      }
+    }
+  }else if(zone===3){
+    const r=Math.random();
+    if(r<0.3){
+      attacks.push({type:'slam',x:player.x,y:player.y,r:85,warnTime:42,active:false,duration:0,timer:0});
+      SFX.telegraphHum();
+    }else if(r<0.55){
+      // Double slam
+      attacks.push({type:'slam',x:player.x,y:player.y,r:80,warnTime:36,active:false,duration:0,timer:0});
+      attacks.push({type:'slam',x:player.x+60*(Math.random()<0.5?-1:1),y:player.y,r:80,warnTime:60,active:false,duration:0,timer:0});
+      SFX.telegraphHum();
+    }else if(r<0.8){
+      // Rage volley 5-way
+      for(let i=-2;i<=2;i++){
+        attacks.push({type:'projectile',x:titan.x,y:titan.y,r:16,warnTime:0,active:true,duration:140,timer:0,vx:i*2.2,vy:5.5});
+      }
+    }else{
+      // Enraged lunge (fast line)
+      attacks.push({type:'lunge',x1:0,x2:W,y:player.y,warnTime:36,active:false,duration:0,timer:0});
+      SFX.telegraphHum();
+    }
+    // Coin shower hazard occasionally
+    if(Math.random()<0.3){
+      for(let i=0;i<3;i++){
+        attacks.push({type:'shower',x:100+Math.random()*(W-200),y:-30,r:25,warnTime:30,active:false,duration:0,timer:0,vy:4+Math.random()*2});
+      }
+    }
+  }
+}
+
+// --- Update ---
+let lastTime=0,frameAccum=0;
+const FIXED=1000/60;
+
+function update(dt){
+  // dt in ms, fixed step
+  if(hitStop>0){hitStop--;return}
+
+  // Screen shake decay
+  if(shakeMag>0){
+    shakeX=(Math.random()-0.5)*shakeMag*2;
+    shakeY=(Math.random()-0.5)*shakeMag*2;
+    shakeMag*=0.85;
+    if(shakeMag<0.5){shakeMag=0;shakeX=0;shakeY=0}
+  }
+  // Juice decays
+  if(juiceEnabled){
+    if(titanHitFlash>0)titanHitFlash--;
+    if(zoneFlashAlpha>0)zoneFlashAlpha=Math.max(0,zoneFlashAlpha-0.05);
+    displayedTitanHp+=(titan.hp-displayedTitanHp)*0.15; // smooth drain lerp
+  }else{
+    displayedTitanHp=titan.hp;
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.08;p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+  // Popups
+  for(let i=popups.length-1;i>=0;i--){
+    const p=popups[i];
+    p.y+=p.vy;p.life--;
+    if(p.life<=0)popups.splice(i,1);
+  }
+
+  if(gameState==='ZONE_TRANSITION'){
+    zoneTransitionTimer-=dt/1000;
+    if(zoneTransitionTimer<=0){gameState='PLAYING';buildPlayingButtons()}
+    return;
+  }
+
+  if(gameState!=='PLAYING')return;
+
+  // Tutorial
+  if(showTutorial){
+    tutorialTimer+=dt/1000;
+    if(tutorialTimer>6)showTutorial=false;
+  }
+
+  // Player movement
+  player.x+=player.vx;
+  player.x=Math.max(player.w/2,Math.min(W-player.w/2,player.x));
+  player.vx*=0.85; // friction
+  // Juice: dodge dust puff when moving fast
+  if(juiceEnabled&&Math.abs(player.vx)>3&&Math.abs(player.x-lastDodgeDustX)>20){
+    lastDodgeDustX=player.x;
+    spawnParticles(player.x,player.y+player.h/2,2,'rgba(192,192,192,0.6)','dust');
+    SFX.dodge();
+  }
+
+  // Player i-frames
+  if(player.iFrames>0)player.iFrames--;
+
+  // Near-miss window decay
+  if(nearMissWindow>0)nearMissWindow--;
+
+  // Combo decay
+  if(combo>0){
+    comboTimer-=dt/1000;
+    if(comboTimer<=0){combo=0;comboTimer=comboDecay}
+  }
+
+  // Titan flip state machine
+  if(!titan.isFlipping){
+    titan.flipTimer+=dt/1000;
+    if(titan.flipTimer>=titan.flipDuration){
+      // Start flip
+      titan.isFlipping=true;titan.flipProgress=0;titan.flipTimer=0;
+      // Feint logic (zone 3): 30% chance fake-out
+      titan.feintTriggered=false;
+      if(titan.feintArmed&&Math.random()<0.3)titan.feintTriggered=true;
+      SFX.flipSpin();
+    }
+  }else{
+    titan.flipProgress+=dt/1000/0.4; // 0.4s flip
+    if(titan.flipProgress>=1){
+      titan.isFlipping=false;titan.flipProgress=0;
+      // Decide landing state (or feint)
+      if(titan.feintTriggered){
+        // Feint: reverse back to same state (no change)
+        titan.feintTriggered=false;
+      }else{
+        titan.state=titan.state==='HEADS'?'TAILS':'HEADS';
+      }
+      SFX.flipLand();
+      // Spawn attack on TAILS entry
+      if(titan.state==='TAILS'){nextAttackTime=0.3} // slight delay
+    }
+  }
+
+  // Attack spawn timing during TAILS
+  if(titan.state==='TAILS'&&!titan.isFlipping){
+    nextAttackTime-=dt/1000;
+    if(nextAttackTime<=0){
+      spawnAttack();
+      nextAttackTime=titan.flipDuration*0.6; // one or two attacks per window
+    }
+  }
+
+  // Attacks update
+  for(let i=attacks.length-1;i>=0;i--){
+    const a=attacks[i];
+    a.timer+=dt/1000;
+    if(a.type==='slam'){
+      if(!a.active&&a.timer*60>=a.warnTime){
+        a.active=true;a.duration=10;a.timer=0;
+        // Check hit
+        const dx=player.x-a.x,dy=player.y-a.y;
+        if(dx*dx+dy*dy<=a.r*a.r)playerHit();
+        else checkNearMiss(a);
+        SFX.telegraphPing();
+        spawnParticles(a.x,a.y,10,COL.amber,'spark');
+      }
+      if(a.active){
+        a.duration-=dt/16.7;
+        if(a.duration<=0)attacks.splice(i,1);
+      }
+    }else if(a.type==='projectile'){
+      a.x+=a.vx;a.y+=a.vy;
+      const dx=player.x-a.x,dy=player.y-a.y;
+      if(dx*dx+dy*dy<=(a.r+player.w/2)*(a.r+player.w/2)){
+        playerHit();attacks.splice(i,1);continue;
+      }
+      if(a.y>H+30||a.x<-30||a.x>W+30)attacks.splice(i,1);
+    }else if(a.type==='lunge'){
+      if(!a.active&&a.timer*60>=a.warnTime){
+        a.active=true;a.duration=15;a.timer=0;
+        if(Math.abs(player.y-a.y)<50)playerHit();
+        else checkNearMissLine(a);
+        SFX.telegraphPing();
+      }
+      if(a.active){a.duration-=dt/16.7;if(a.duration<=0)attacks.splice(i,1)}
+    }else if(a.type==='shower'){
+      if(!a.active&&a.timer*60>=a.warnTime){
+        a.active=true;SFX.telegraphPing();
+      }
+      if(a.active){
+        a.y+=a.vy;
+        const dx=player.x-a.x,dy=player.y-a.y;
+        if(dx*dx+dy*dy<=(a.r+player.w/2)*(a.r+player.w/2)){
+          playerHit();attacks.splice(i,1);continue;
+        }
+        if(a.y>H+30)attacks.splice(i,1);
+      }
+    }
+  }
+
+  // Ambient floating coins
+  if(floatingCoins.length<12&&Math.random()<0.02){
+    floatingCoins.push({x:Math.random()*W,y:H+20,speed:0.3+Math.random()*0.5,phase:Math.random()*Math.PI*2});
+  }
+  for(let i=floatingCoins.length-1;i>=0;i--){
+    const c=floatingCoins[i];
+    c.y-=c.speed;c.phase+=0.02;
+    if(c.y<-30)floatingCoins.splice(i,1);
+  }
+}
+
+function checkNearMiss(a){
+  const dx=player.x-a.x,dy=player.y-a.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  // Just outside radius but close
+  if(dist>a.r&&dist<a.r+40){
+    score+=50;addPopup(player.x,player.y-40,'NEAR MISS! +50',COL.amber,1.3);
+    spawnParticles(player.x,player.y,8,COL.amber,'spark');
+    SFX.nearMiss();
+  }
+}
+function checkNearMissLine(a){
+  if(Math.abs(player.y-a.y)>=50&&Math.abs(player.y-a.y)<80){
+    score+=50;addPopup(player.x,player.y-40,'NEAR MISS! +50',COL.amber,1.3);
+    spawnParticles(player.x,player.y,8,COL.amber,'spark');
+    SFX.nearMiss();
+  }
+}
+
+function playerHit(){
+  if(player.iFrames>0)return;
+  player.hp--;player.iFrames=60; // 1s invuln
+  combo=0;mintBreakMeter=0;
+  SFX.playerHit();
+  shakeMag=Math.max(shakeMag,6);
+  spawnParticles(player.x,player.y,10,COL.hpRed,'spark');
+  addPopup(player.x,player.y-30,'-1 HP',COL.hpRed,1.1);
+  if(player.hp<=0)gameOver();
+}
+
+// --- Render ---
+function render(){
+  ctx.save();
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  const bgGrad=ctx.createLinearGradient(0,0,0,H);
+  if(zone===1){bgGrad.addColorStop(0,'#2D1B4E');bgGrad.addColorStop(1,'#1A1030')}
+  else if(zone===2){bgGrad.addColorStop(0,'#1E2A4E');bgGrad.addColorStop(1,'#0F1A30')}
+  else{bgGrad.addColorStop(0,'#3A1030');bgGrad.addColorStop(1,'#1A0520')}
+  ctx.fillStyle=bgGrad;ctx.fillRect(0,0,W,H);
+
+  // Apply screenshake (world layer only)
+  ctx.save();
+  ctx.translate(shakeX,shakeY);
+
+  // Colosseum arches silhouette
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  for(let i=0;i<5;i++){
+    const ax=i*(W/4)-40;
+    ctx.beginPath();
+    ctx.moveTo(ax,H*0.35);
+    ctx.lineTo(ax+40,H*0.2);
+    ctx.lineTo(ax+120,H*0.2);
+    ctx.lineTo(ax+160,H*0.35);
+    ctx.closePath();ctx.fill();
+  }
+
+  // Ambient floating coins
+  ctx.fillStyle='rgba(255,215,0,0.25)';
+  for(const c of floatingCoins){
+    const ox=Math.sin(c.phase)*10;
+    ctx.beginPath();ctx.arc(c.x+ox,c.y,8,0,Math.PI*2);ctx.fill();
+  }
+
+  if(gameState==='PLAYING'||gameState==='PAUSED'||gameState==='ZONE_TRANSITION'||gameState==='HOW_TO_PLAY'&&returnState==='PAUSED'){
+    // Draw arena floor medallion
+    drawArena();
+    // Attacks
+    drawAttacks();
+    // Titan
+    drawTitan();
+    // Player
+    drawPlayer();
+    // Particles
+    drawParticles();
+    // Popups
+    drawPopups();
+  }
+
+  ctx.restore(); // end shake
+
+  // Juice: zone transition flash overlay
+  if(juiceEnabled&&zoneFlashAlpha>0){
+    ctx.fillStyle=`rgba(0,206,209,${zoneFlashAlpha*0.4})`;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // HUD (unshaken)
+  if(gameState==='PLAYING'||gameState==='PAUSED'||gameState==='ZONE_TRANSITION'){
+    drawHUD();
+  }
+
+  // Screens per state
+  drawScreen();
+
+  // Buttons
+  drawButtons();
+
+  ctx.restore();
+}
+
+function drawArena(){
+  // Giant floor medallion
+  const cy=H-250;
+  ctx.save();
+  ctx.translate(W/2,cy);
+  ctx.rotate(zone>=2?performance.now()*0.0001:0);
+  // Outer ring
+  ctx.strokeStyle=COL.gold;ctx.lineWidth=6;
+  ctx.beginPath();ctx.arc(0,0,300,0,Math.PI*2);ctx.stroke();
+  // Heads half
+  ctx.fillStyle='rgba(255,215,0,0.15)';
+  ctx.beginPath();ctx.arc(0,0,290,0,Math.PI);ctx.fill();
+  // Tails half
+  ctx.fillStyle='rgba(192,192,192,0.15)';
+  ctx.beginPath();ctx.arc(0,0,290,Math.PI,Math.PI*2);ctx.fill();
+  // Center line
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-290,0);ctx.lineTo(290,0);ctx.stroke();
+  // Zone 2+ sectors
+  if(zone>=2){
+    ctx.strokeStyle='rgba(80,200,120,0.3)';ctx.lineWidth=2;
+    for(let i=0;i<4;i++){
+      ctx.save();ctx.rotate(i*Math.PI/2+performance.now()*0.0002);
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(290,0);ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // Zone 3 edge crumble (visual)
+  if(zone===3){
+    ctx.strokeStyle='rgba(139,0,0,0.5)';ctx.lineWidth=8;
+    ctx.setLineDash([20,15]);
+    ctx.beginPath();ctx.arc(0,0,310,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+function drawTitan(){
+  const {x,y,r,state,isFlipping,flipProgress,squash}=titan;
+  ctx.save();
+  ctx.translate(x,y);
+  // Flip rotation visual
+  let scaleX=1;
+  if(isFlipping){
+    const t=flipProgress;
+    scaleX=Math.abs(Math.cos(t*Math.PI*2)); // full 360 spin
+    // Brief squash at apex
+    if(t>0.45&&t<0.55){ctx.scale(1.1,0.9)}
+  }
+  ctx.scale(scaleX,1);
+
+  // Body coin
+  const bodyCol=state==='HEADS'?COL.gold:COL.silver;
+  const darkCol=state==='HEADS'?'#B8860B':'#808080';
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(0,r*0.9,r*0.8,r*0.15,0,0,Math.PI*2);ctx.fill();
+  // Outer
+  ctx.fillStyle=darkCol;
+  ctx.beginPath();ctx.arc(0,0,r+6,0,Math.PI*2);ctx.fill();
+  // Main
+  ctx.fillStyle=bodyCol;
+  ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+  // Rim
+  ctx.strokeStyle=COL.outline;ctx.lineWidth=4;
+  ctx.beginPath();ctx.arc(0,0,r-4,0,Math.PI*2);ctx.stroke();
+  // Juice: hit flash white overlay
+  if(juiceEnabled&&titanHitFlash>0){
+    ctx.fillStyle=`rgba(255,255,255,${titanHitFlash/6*0.6})`;
+    ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+  }
+
+  if(state==='HEADS'){
+    // King face
+    ctx.fillStyle=COL.outline;
+    // Eyes
+    ctx.beginPath();ctx.arc(-40,-20,12,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(40,-20,12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=COL.white;
+    ctx.beginPath();ctx.arc(-38,-22,4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(42,-22,4,0,Math.PI*2);ctx.fill();
+    // Smile
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(0,15,40,0.2,Math.PI-0.2);ctx.stroke();
+    // Crown
+    ctx.fillStyle=COL.gold;ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(-50,-r*0.7);ctx.lineTo(-40,-r*0.9);ctx.lineTo(-25,-r*0.75);ctx.lineTo(0,-r*0.95);ctx.lineTo(25,-r*0.75);ctx.lineTo(40,-r*0.9);ctx.lineTo(50,-r*0.7);
+    ctx.closePath();ctx.fill();ctx.stroke();
+    // Glowing rune forehead (weak point)
+    const glow=0.5+Math.sin(performance.now()*0.005)*0.5;
+    ctx.fillStyle=`rgba(0,206,209,${0.6+glow*0.4})`;
+    ctx.beginPath();ctx.arc(0,-r*0.45,18,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=COL.teal;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(0,-r*0.45,18,0,Math.PI*2);ctx.stroke();
+    // Inner glow pulse
+    ctx.fillStyle=`rgba(0,206,209,${glow*0.3})`;
+    ctx.beginPath();ctx.arc(0,-r*0.45,28,0,Math.PI*2);ctx.fill();
+  }else{
+    // TAILS: heraldic shield backplate
+    ctx.fillStyle=darkCol;
+    ctx.beginPath();
+    ctx.moveTo(-r*0.5,-r*0.4);ctx.lineTo(r*0.5,-r*0.4);ctx.lineTo(r*0.5,r*0.1);
+    ctx.quadraticCurveTo(r*0.5,r*0.5,0,r*0.7);
+    ctx.quadraticCurveTo(-r*0.5,r*0.5,-r*0.5,r*0.1);
+    ctx.closePath();ctx.fill();
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=3;ctx.stroke();
+    // Rivets
+    ctx.fillStyle=COL.outline;
+    [[-r*0.35,-r*0.25],[r*0.35,-r*0.25],[-r*0.35,0.1*r],[r*0.35,0.1*r],[0,r*0.4]].forEach(p=>{
+      ctx.beginPath();ctx.arc(p[0],p[1],6,0,Math.PI*2);ctx.fill();
+    });
+    // Center emblem (coin)
+    ctx.fillStyle=COL.silver;
+    ctx.beginPath();ctx.arc(0,0,r*0.2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,r*0.2,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+
+  // HP bar (coin gauge) above titan
+  drawTitanHP();
+}
+
+function drawTitanHP(){
+  const bx=W/2-150,by=80,bw=300,bh=24;
+  const pct=(juiceEnabled?displayedTitanHp:titan.hp)/titan.maxHp;
+  // Frame
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(bx-3,by-3,bw+6,bh+6);
+  // Background
+  ctx.fillStyle='#333';
+  ctx.fillRect(bx,by,bw,bh);
+  // Gold half (left)
+  ctx.fillStyle=COL.gold;
+  ctx.fillRect(bx,by,bw/2*pct*2>bw/2?bw/2:bw/2*pct*2,bh);
+  // Silver half (right) - depletes from center outward conceptually; show remaining
+  ctx.fillStyle=COL.silver;
+  const rightW=bw/2*pct;
+  ctx.fillRect(bx+bw-rightW,by,rightW,bh);
+  // Center divider
+  ctx.fillStyle=COL.outline;
+  ctx.fillRect(bx+bw/2-1,by,2,bh);
+  // Outline
+  ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+  ctx.strokeRect(bx,by,bw,bh);
+  // Label
+  ctx.fillStyle=COL.white;ctx.font='bold 14px monospace';ctx.textAlign='center';
+  ctx.fillText('TITAN',W/2,by-6);
+}
+
+function drawPlayer(){
+  const {x,y,w,h,iFrames}=player;
+  ctx.save();
+  ctx.translate(x,y);
+  // Flicker during i-frames
+  if(iFrames>0&&Math.floor(iFrames/4)%2===0)ctx.globalAlpha=0.4;
+  // Dodge roll lean
+  const lean=player.vx*0.02;
+  ctx.rotate(lean);
+  // Body
+  ctx.fillStyle=COL.blue;
+  ctx.strokeStyle=COL.outline;ctx.lineWidth=3;
+  ctx.beginPath();
+  const rx=-w/2,ry=-h/2,rw=w,rh=h,rr=8;
+  ctx.moveTo(rx+rr,ry);
+  ctx.lineTo(rx+rw-rr,ry);
+  ctx.arcTo(rx+rw,ry,rx+rw,ry+rr,rr);
+  ctx.lineTo(rx+rw,ry+rh-rr);
+  ctx.arcTo(rx+rw,ry+rh,rx+rw-rr,ry+rh,rr);
+  ctx.lineTo(rx+rr,ry+rh);
+  ctx.arcTo(rx,ry+rh,rx,ry+rh-rr,rr);
+  ctx.lineTo(rx,ry+rr);
+  ctx.arcTo(rx,ry,rx+rr,ry,rr);
+  ctx.closePath();
+  ctx.fill();ctx.stroke();
+  // Helmet visor
+  ctx.fillStyle=COL.outline;
+  ctx.fillRect(-w/2+8,-h/2+10,w-16,8);
+  // Sword arm (strike anim)
+  if(gameState==='PLAYING'&&titan.state==='HEADS'&&!titan.isFlipping){
+    ctx.fillStyle=COL.silver;
+    ctx.save();ctx.translate(w/2,0);ctx.rotate(-0.5);
+    ctx.fillRect(0,-3,28,6);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawAttacks(){
+  for(const a of attacks){
+    if(a.type==='slam'){
+      if(!a.active){
+        // Telegraph
+        const progress=a.timer*60/a.warnTime;
+        ctx.fillStyle=`rgba(255,68,68,${0.1+progress*0.2})`;
+        ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=`rgba(255,165,0,${0.5+progress*0.5})`;
+        ctx.lineWidth=3+progress*2;
+        ctx.setLineDash([10,8]);
+        ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.stroke();
+        ctx.setLineDash([]);
+      }else{
+        // Impact flash
+        ctx.fillStyle=`rgba(255,165,0,${a.duration/10})`;
+        ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=COL.amber;ctx.lineWidth=4;
+        ctx.beginPath();ctx.arc(a.x,a.y,a.r*(1+(10-a.duration)*0.05),0,Math.PI*2);ctx.stroke();
+      }
+    }else if(a.type==='projectile'){
+      ctx.fillStyle=COL.silver;
+      ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+      // Trail
+      ctx.fillStyle='rgba(192,192,192,0.3)';
+      ctx.beginPath();ctx.arc(a.x-a.vx*2,a.y-a.vy*2,a.r*0.7,0,Math.PI*2);ctx.fill();
+    }else if(a.type==='lunge'){
+      if(!a.active){
+        const progress=a.timer*60/a.warnTime;
+        ctx.fillStyle=`rgba(255,68,68,${0.1+progress*0.15})`;
+        ctx.fillRect(0,a.y-40,W,80);
+        ctx.strokeStyle=`rgba(255,165,0,${0.5+progress*0.5})`;
+        ctx.lineWidth=3;
+        ctx.setLineDash([20,10]);
+        ctx.beginPath();ctx.moveTo(0,a.y-40);ctx.lineTo(W,a.y-40);
+        ctx.moveTo(0,a.y+40);ctx.lineTo(W,a.y+40);ctx.stroke();
+        ctx.setLineDash([]);
+      }else{
+        ctx.fillStyle=`rgba(255,165,0,${a.duration/15*0.4})`;
+        ctx.fillRect(0,a.y-40,W,80);
+      }
+    }else if(a.type==='shower'){
+      if(!a.active){
+        // Landing zone marker on ground? Just falling warning via opacity
+        ctx.fillStyle='rgba(255,215,0,0.3)';
+        ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();
+      }else{
+        ctx.fillStyle=COL.gold;
+        ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+        // Coin
+        ctx.beginPath();ctx.ellipse(a.x,a.y,a.r,a.r*0.6,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    const alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=p.color;
+    if(p.type==='confetti'){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.life*0.2);
+      ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      ctx.restore();
+    }else{
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawPopups(){
+  for(const p of popups){
+    const alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=p.color;
+    ctx.font=`bold ${Math.floor(20*p.scale)}px monospace`;
+    ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=3;
+    ctx.strokeText(p.text,p.x,p.y);
+    ctx.fillText(p.text,p.x,p.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  // Hearts
+  for(let i=0;i<player.maxHp;i++){
+    const hx=30+i*40,hy=40;
+    ctx.fillStyle=i<player.hp?COL.hpRed:'rgba(100,100,100,0.5)';
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=2;
+    drawHeart(hx,hy,14);
+  }
+  // Score
+  ctx.fillStyle=COL.white;ctx.font='bold 28px monospace';ctx.textAlign='left';
+  ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=4;
+  ctx.strokeText('SCORE: '+score,30,90);
+  ctx.fillText('SCORE: '+score,30,90);
+  // Zone
+  ctx.textAlign='right';
+  ctx.fillStyle=COL.teal;ctx.font='bold 22px monospace';
+  ctx.strokeText('ZONE '+zone,W-90,100);
+  ctx.fillText('ZONE '+zone,W-90,100);
+  // Pause button already drawn as button
+  // Mint combo meter
+  const mx=W/2-100,my=H-70,mw=200,mh=16;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(mx-2,my-2,mw+4,mh+4);
+  // Segments
+  for(let i=0;i<maxCombo;i++){
+    const sx=mx+i*(mw/maxCombo);
+    ctx.fillStyle=i<mintBreakMeter?COL.gold:'rgba(192,192,192,0.3)';
+    ctx.fillRect(sx+1,my,mw/maxCombo-2,mh);
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=1;
+    ctx.strokeRect(sx+1,my,mw/maxCombo-2,mh);
+  }
+  ctx.fillStyle=COL.white;ctx.font='12px monospace';ctx.textAlign='center';
+  ctx.fillText('MINT BREAK',W/2,my-6);
+  // Combo count
+  if(combo>1){
+    ctx.fillStyle=COL.gold;ctx.font='bold 24px monospace';
+    ctx.strokeText('COMBO x'+combo,W/2,H-95);
+    ctx.fillText('COMBO x'+combo,W/2,H-95);
+  }
+  // Titan state indicator
+  ctx.font='bold 18px monospace';ctx.textAlign='center';
+  if(titan.isFlipping){
+    ctx.fillStyle=COL.amber;
+    ctx.fillText('FLIPPING...',W/2,130);
+  }else if(titan.state==='HEADS'){
+    ctx.fillStyle=COL.gold;
+    ctx.fillText('HEADS — TAP TO STRIKE!',W/2,130);
+  }else{
+    ctx.fillStyle=COL.silver;
+    ctx.fillText('TAILS — DODGE!',W/2,130);
+  }
+  // Tutorial overlay
+  if(showTutorial&&gameState==='PLAYING'){
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(W/2-200,H/2-60,400,120);
+    ctx.fillStyle=COL.white;ctx.font='bold 20px monospace';ctx.textAlign='center';
+    ctx.fillText('TAP to strike on HEADS!',W/2,H/2-20);
+    ctx.fillText('DRAG to dodge on TAILS!',W/2,H/2+15);
+    ctx.fillStyle=COL.teal;ctx.font='14px monospace';
+    ctx.fillText('(fades in a few seconds)',W/2,H/2+45);
+  }
+}
+
+function drawHeart(cx,cy,size){
+  ctx.beginPath();
+  ctx.moveTo(cx,cy+size*0.3);
+  ctx.bezierCurveTo(cx,cy,cx-size,cy,cx-size,cy+size*0.3);
+  ctx.bezierCurveTo(cx-size,cy+size*0.7,cx,cy+size,cx,cy+size*1.2);
+  ctx.bezierCurveTo(cx,cy+size,cx+size,cy+size*0.7,cx+size,cy+size*0.3);
+  ctx.bezierCurveTo(cx+size,cy,cx,cy,cx,cy+size*0.3);
+  ctx.closePath();ctx.fill();ctx.stroke();
+}
+
+function drawScreen(){
+  if(gameState==='TITLE'){
+    // Dim
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(0,0,W,H);
+    // Logo
+    ctx.fillStyle=COL.gold;ctx.font='bold 64px monospace';ctx.textAlign='center';
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=8;
+    ctx.strokeText('TWO-FACED',W/2,300);
+    ctx.fillText('TWO-FACED',W/2,300);
+    // Animated coin in TITAN
+    ctx.save();
+    ctx.translate(W/2,400);
+    const spin=Math.sin(performance.now()*0.003)*0.5+0.5;
+    ctx.scale(Math.abs(Math.cos(performance.now()*0.003)),1);
+    ctx.fillStyle=spin>0.5?COL.gold:COL.silver;
+    ctx.beginPath();ctx.arc(0,0,50,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=4;ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle=COL.gold;ctx.font='bold 64px monospace';
+    ctx.strokeText('T TAN',W/2,400);
+    ctx.fillText('T TAN',W/2,400);
+    ctx.fillStyle=COL.teal;ctx.font='20px monospace';
+    ctx.fillText('Theme: Coin Flip — Gameotron Jam',W/2,460);
+    ctx.fillStyle=COL.white;ctx.font='16px monospace';
+    ctx.fillText('High Score: '+highScore,W/2,490);
+  }else if(gameState==='HOW_TO_PLAY'){
+    ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.white;ctx.font='bold 36px monospace';ctx.textAlign='center';
+    ctx.fillText('HOW TO PLAY',W/2,120);
+    ctx.font='18px monospace';ctx.textAlign='left';
+    const lines=[
+      ['TAP','to STRIKE the Titan when it shows','its HEADS face (gold, glowing rune).'],
+      ['DRAG','left/right to DODGE telegraphed','attacks when it shows TAILS armor.'],
+      ['','Build the MINT COMBO meter (5 hits)','for a massive MINT BREAK!'],
+      ['','Dodge LATE for NEAR-MISS bonuses','(+50 pts), early for safety.'],
+      ['','Survive 3 ZONES to defeat the Titan.','Each zone flips FASTER!'],
+      ['','3 hearts. Don\'t get hit!','Good luck, duelist.']
+    ];
+    let y=200;
+    for(const [key,l1,l2] of lines){
+      if(key){
+        ctx.fillStyle=COL.gold;ctx.font='bold 20px monospace';
+        ctx.fillText(key,60,y);
+      }
+      ctx.fillStyle=COL.white;ctx.font='18px monospace';
+      ctx.fillText(l1,key?130:60,y);
+      ctx.fillText(l2,key?130:60,y+28);
+      y+=80;
+    }
+  }else if(gameState==='PAUSED'){
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.white;ctx.font='bold 48px monospace';ctx.textAlign='center';
+    ctx.fillText('PAUSED',W/2,320);
+  }else if(gameState==='SETTINGS'){
+    ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.white;ctx.font='bold 40px monospace';ctx.textAlign='center';
+    ctx.fillText('SETTINGS',W/2,320);
+  }else if(gameState==='ZONE_TRANSITION'){
+    ctx.fillStyle=`rgba(0,0,0,${0.4+Math.sin(performance.now()*0.01)*0.1})`;
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.teal;ctx.font='bold 56px monospace';ctx.textAlign='center';
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=6;
+    ctx.strokeText('ZONE '+zone,W/2,H/2-20);
+    ctx.fillText('ZONE '+zone,W/2,H/2-20);
+    ctx.fillStyle=COL.white;ctx.font='24px monospace';
+    const msgs={2:'THE FLIP QUICKENS!',3:'FINAL PHASE — ALL OR NOTHING!'};
+    ctx.fillText(msgs[zone]||'',W/2,H/2+30);
+  }else if(gameState==='GAME_OVER'){
+    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.hpRed;ctx.font='bold 56px monospace';ctx.textAlign='center';
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=6;
+    ctx.strokeText('DEFEATED',W/2,400);
+    ctx.fillText('DEFEATED',W/2,400);
+    ctx.fillStyle=COL.white;ctx.font='28px monospace';
+    ctx.fillText('Score: '+score,W/2,500);
+    ctx.fillText('High Score: '+highScore,W/2,550);
+    if(score>=highScore&&score>0){
+      ctx.fillStyle=COL.gold;ctx.font='bold 24px monospace';
+      ctx.fillText('NEW HIGH SCORE!',W/2,600);
+    }
+  }else if(gameState==='VICTORY'){
+    ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=COL.gold;ctx.font='bold 48px monospace';ctx.textAlign='center';
+    ctx.strokeStyle=COL.outline;ctx.lineWidth=6;
+    ctx.strokeText('TITAN VANQUISHED!',W/2,350);
+    ctx.fillText('TITAN VANQUISHED!',W/2,350);
+    ctx.fillStyle=COL.white;ctx.font='24px monospace';
+    ctx.fillText('Final Score: '+score,W/2,450);
+    // Medal
+    let medal='BRONZE',mCol='#CD7F32';
+    if(score>=5000){medal='GOLD';mCol=COL.gold}
+    else if(score>=2500){medal='SILVER';mCol=COL.silver}
+    ctx.fillStyle=mCol;ctx.font='bold 32px monospace';
+    ctx.fillText('★ '+medal+' MEDAL ★',W/2,520);
+    ctx.fillStyle=COL.white;ctx.font='20px monospace';
+    ctx.fillText('High Score: '+highScore,W/2,570);
+  }
+}
+
+function drawButtons(){
+  const pulse=juiceEnabled?(0.7+Math.sin(performance.now()*0.004)*0.3):1;
+  for(const b of buttons){
+    // Hover state (mouse only, skip for touch simplicity)
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.strokeStyle=`rgba(0,206,209,${pulse})`;ctx.lineWidth=3;
+    ctx.strokeRect(b.x,b.y,b.w,b.h);
+    ctx.fillStyle=COL.white;ctx.font='bold 22px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    // Fit text
+    let fs=22;
+    while(ctx.measureText(b.label).width>b.w-16&&fs>10){fs--;ctx.font='bold '+fs+'px monospace'}
+    ctx.fillText(b.label,b.x+b.w/2,b.y+b.h/2);
+    ctx.textBaseline='alphabetic';
+  }
+}
+
+// --- Main loop ---
+function frame(ts){
+  if(!lastTime)lastTime=ts;
+  let dt=ts-lastTime;lastTime=ts;
+  if(dt>50)dt=50; // cap
+  frameAccum+=dt;
+  while(frameAccum>=FIXED){
+    update(FIXED);
+    frameAccum-=FIXED;
+  }
+  // Rebuild playing buttons each frame (pause button)
+  if(gameState==='PLAYING')buildPlayingButtons();
+  else if(gameState==='TITLE')buildTitleButtons();
+  else if(gameState==='PAUSED')buildPauseButtons();
+  else if(gameState==='SETTINGS')buildSettingsButtons();
+  else if(gameState==='HOW_TO_PLAY')buildHowToPlayButtons();
+  // game over / victory buttons built once on transition
+  render();
+  requestAnimationFrame(frame);
+}
+
+// Init
+buildTitleButtons();
+requestAnimationFrame(frame);
+
+// Prevent context menu on long press
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+</script>
+</body>
+</html>

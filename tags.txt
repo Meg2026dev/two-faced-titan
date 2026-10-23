@@ -1,0 +1,11 @@
+action
+boss
+arcade
+coin
+flip
+touch
+mobile
+singlehtml
+canvas
+vanilla-js
+gameotron

@@ -1,0 +1,35 @@
+SCORING TABLE:
+| Concept | Hook | Touch | Theme | Total | Rank |
+|---------|------|-------|-------|-------|------|
+| #1 Lucky Lands | 4 | 4 | 5 | 4.45 | 2 |
+| #2 Heads or Dash | 4 | 5 | 4 | 4.25 | 8 |
+| #3 Coin Cascade | 3 | 4 | 5 | 4.15 | 9 |
+| #4 Flip Fortress | 4 | 4 | 4 | 4.00 | 12 |
+| #5 Probability Push | 3 | 4 | 5 | 4.15 | 9 |
+| #6 Orbit Flip | 5 | 3 | 4 | 4.05 | 11 |
+| #7 Stacked Stakes | 4 | 4 | 4 | 4.00 | 12 |
+| #8 Flip Chef | 4 | 4 | 4 | 4.00 | 12 |
+| #9 Two-Faced Titan | 5 | 4 | 5 | 4.75 | 1 |
+| #10 Flip Flock | 3 | 4 | 4 | 3.70 | 17 |
+| #11 Mint Master | 3 | 3 | 5 | 3.90 | 16 |
+| #12 Double or Nothing | 4 | 4 | 5 | 4.45 | 2 |
+| #13 Flip the Script | 4 | 3 | 4 | 3.75 | 15 |
+| #14 Skyborne Salvage | 3 | 4 | 4 | 3.70 | 17 |
+| #15 Flip Royale | 4 | 3 | 4 | 3.75 | 15 |
+| #16 Pendulum Prosperity | 4 | 4 | 5 | 4.45 | 2 |
+| #17 Flip Frontier | 4 | 4 | 5 | 4.45 | 2 |
+| #18 Quantum Flip | 4 | 3 | 4 | 3.75 | 15 |
+| #19 Flip Trek | 3 | 4 | 4 | 3.70 | 17 |
+| #20 Legacy Flip | 4 | 4 | 5 | 4.45 | 2 |
+
+WINNING CONCEPT: #9 Two-Faced Titan
+FINAL DECISION: Two-Faced Titan wins with a weighted score of 4.75 (HOOK 5, TOUCH 4, THEME 5)—a boss battler where a colossal coin-faced titan flips between heads (vulnerable) and tails (armored) states, demanding precise tap-strikes during heads windows and drag-dodges during tails counterattacks, delivering maximum theme coherence (the boss IS a living coin) with high spectacle and clear skill expression for touch players.
+
+FULL EVALUATION DETAILS:
+- Highest THEME INTEGRATION (5/5) alongside 5 other concepts—boss-as-coin is the most diegetic, non-metaphorical take on the theme in the entire set.
+- Highest HOOK (5/5) tied only with #6 Orbit Flip—combat spectacle + readable binary state creates immediate "I get it" engagement.
+- TOUCH-FRIENDLINESS 4/5—tap-to-strike + drag-to-dodge is idiomatic mobile action vocabulary; slightly below 5 due to timing-window precision needed for heads-strike windows, mitigated by generous early-game windows.
+- Beat #1/#12/#16/#17/#20 (all 4.45) by a clear 0.30 margin driven by superior HOOK + THEME combo.
+- Expert praise: "excellent thematic coherence", "high spectacle potential", "clear skill expression"—aligned with autonomous selection criteria for a deployable, jam-winning browser game.
+
+AUTONOMOUS SELECTION: Concept #9 auto-approved (full autonomous mode—no user gate).

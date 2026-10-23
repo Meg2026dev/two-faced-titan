@@ -1,0 +1,30 @@
+[desktop] PASS Page loads, title="Two-Faced Titan"
+[desktop] PASS Canvas exists 800x1200
+[desktop] PASS Initial state=TITLE
+[desktop] PASS START button -> gameState=PLAYING
+[desktop] PASS Game vars present (player.x=400, titan.hp=100, state=HEADS)
+[desktop] PASS Tap strike reduces titan HP (100->99)
+[desktop] PASS Drag moves player (400->601)
+[desktop] PASS Pause button -> PAUSED
+[desktop] PASS Resume -> PLAYING
+[desktop] PASS No runtime errors
+[desktop-small] PASS Page loads, title="Two-Faced Titan"
+[desktop-small] PASS Canvas exists 800x1200
+[desktop-small] PASS Initial state=TITLE
+[desktop-small] PASS START button -> gameState=PLAYING
+[desktop-small] PASS Game vars present (player.x=400, titan.hp=100, state=HEADS)
+[desktop-small] PASS Tap strike reduces titan HP (100->99)
+[desktop-small] PASS Drag moves player (400->770)
+[desktop-small] PASS Pause button -> PAUSED
+[desktop-small] PASS Resume -> PLAYING
+[desktop-small] PASS No runtime errors
+[mobile] PASS Page loads, title="Two-Faced Titan"
+[mobile] PASS Canvas exists 800x1200
+[mobile] PASS Initial state=TITLE
+[mobile] PASS START button -> gameState=PLAYING
+[mobile] PASS Game vars present (player.x=400, titan.hp=100, state=HEADS)
+[mobile] PASS Tap strike reduces titan HP (100->99)
+[mobile] PASS Drag moves player (400->778)
+[mobile] PASS Pause button -> PAUSED
+[mobile] PASS Resume -> PLAYING
+[mobile] PASS No runtime errors

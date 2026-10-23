@@ -1,0 +1,123 @@
+EXPERT REVIEW OF CONCEPTS (Theme: Coin Flip)
+
+CONCEPT #1 Lucky Lands
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Strong core fantasy—every jump literally being a coin flip with world-state consequences. Tap-timing is touch-idiomatic. Accelerating gravity + shrinking zones may frustrate beginners early; needs gentler learning curve.
+
+CONCEPT #2 Heads or Dash
+HOOK: 4
+TOUCH-FRIENDLINESS: 5
+THEME INTEGRATION: 4
+EXPERT NOTES: Lane-swap runner is proven touch formula (Crossy/Geometry Dash vibe). Coin-flip as lane-switch is clean but slightly metaphorical—theme could be more diegetic. Speed escalation needs careful balancing.
+
+CONCEPT #3 Coin Cascade
+HOOK: 3
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Pinball-pegboard coin cascade is visually satisfying and deeply thematic (every bounce = flip). Single-tap release is maximally touch-friendly. Hook suffers from puzzle-generic feel; needs stronger juice/narrative hook.
+
+CONCEPT #4 Flip Fortress
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Binary high/low block mirrors coin duality well. Projectile-arc reading adds skill depth. Drag-rotate + tap-flip combo might overload casual touch players; consider simplified one-axis defense.
+
+CONCEPT #5 Probability Push
+HOOK: 3
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Pure probabilistic tug-of-war is mechanically honest to coin flipping. Critter-streak summons add charm. Passive-feeling—needs more active player agency beyond tap-to-flip rhythm.
+
+CONCEPT #6 Orbit Flip
+HOOK: 5
+TOUCH-FRIENDLINESS: 3
+THEME INTEGRATION: 4
+EXPERT NOTES: Cosmic orbit-flip is gorgeous and original. However orbit-switch timing on touch without precise hover feedback risks frustration; needs generous flip windows. Theme integration is abstract (direction = heads/tails).
+
+CONCEPT #7 Stacked Stakes
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Tower-stack physics with coin-flip stability is satisfying (Tower Bloxx vibes). Wobble feedback is great juice opportunity. Binary stable/unstable outcome may feel too random—need skill-based mitigation.
+
+CONCEPT #8 Flip Chef
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Kitchen rhythm with pan-flip catching is charming and thematic. Multi-ingredient tracking could overwhelm touch; needs clear visual queuing. Strong casual appeal.
+
+CONCEPT #9 Two-Faced Titan
+HOOK: 5
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Boss as living coin—excellent thematic coherence. Heads-vulnerable/tails-armored windows create clear skill expression. Telegraph patterns needed so flips feel readable not random. High spectacle potential.
+
+CONCEPT #10 Flip Flock
+HOOK: 3
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Flock-herding via binary flip is novel but control abstraction (one bird decides all) may confuse. Weather-gate matching adds match-3 flavor. Needs clearer visual language for flock state.
+
+CONCEPT #11 Mint Master
+HOOK: 3
+TOUCH-FRIENDLINESS: 3
+THEME INTEGRATION: 5
+EXPERT NOTES: Industrial coin-minting is deeply thematic but conveyor-sorting is stressful on small screens; drag-sort precision challenging. Could be great zen game with slowed pace—currently risks anxiety overload.
+
+CONCEPT #12 Double or Nothing
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Gambling-core loop is pure coin-flip essence. Score-wipe punishment may feel harsh; needs pity/bonus mechanics. Trick-flip aiming adds skill over pure RNG. Strong streamer appeal for risk/reward moments.
+
+CONCEPT #13 Flip the Script
+HOOK: 4
+TOUCH-FRIENDLINESS: 3
+THEME INTEGRATION: 4
+EXPERT NOTES: Dual-dimension puzzle is clever and narrative-rich. Object-portaling between worlds on touch requires drag precision; may need snap-to-grid aids. Slower pace—good for puzzle fans, less arcade-y.
+
+CONCEPT #14 Skyborne Salvage
+HOOK: 3
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Balloon altitude-as-flip is whimsical. Continuous ascend/descend binary might feel less "flip-like" than discrete choices. Salvage-catching adds collection motivation. Pretty but lower stakes.
+
+CONCEPT #15 Flip Royale
+HOOK: 4
+TOUCH-FRIENDLINESS: 3
+THEME INTEGRATION: 4
+EXPERT NOTES: Card-battler with per-card coin flip is strategically deep. Touch card-drag + flip-timing complexity high for casual. Needs strong tutorialization. Good for dedicated players.
+
+CONCEPT #16 Pendulum Prosperity
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Stopping a coin-pendulum mid-swing is a brilliant physical metaphor. Timing-window skill is satisfying. Economic boom/bust theming is fresh. Needs clear zone-visual feedback at speed.
+
+CONCEPT #17 Flip Frontier
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Cowboy showdown coin-flip is iconic and diegetic. Draw-duel timing is tense and touch-friendly (tap to flip, tap to draw). Saloon crowd reactions add personality. Strong audio-visual synergy potential.
+
+CONCEPT #18 Quantum Flip
+HOOK: 4
+TOUCH-FRIENDLINESS: 3
+THEME INTEGRATION: 4
+EXPERT NOTES: Quantum superposition collapsing is intellectually cool. Entanglement-chain puzzles could brain-burn casuals; needs mode selection. Visual potential is huge (probability clouds). Niche appeal risk.
+
+CONCEPT #19 Flip Trek
+HOOK: 3
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 4
+EXPERT NOTES: Space exploration with coin-flip navigation is adventurous. Route-charting drag on star-map is touch-ok. Could feel repetitive without discovery rewards. Nebula hazards add tension.
+
+CONCEPT #20 Legacy Flip
+HOOK: 4
+TOUCH-FRIENDLINESS: 4
+THEME INTEGRATION: 5
+EXPERT NOTES: Generational blessing/curse coin is emotionally resonant and deeply thematic. Timeline-dragging is novel. Needs clear cause-effect feedback so players understand flip consequences across generations. Story-driven niche.
+
+END OF EXPERT REVIEW

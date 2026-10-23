@@ -1,0 +1,41 @@
+BUGLIST — Two-Faced Titan static review (review_agent) + runtime (puppeteer_agent) cycle 1
+Time: 181450
+
+STATIC REVIEW FINDINGS:
+
+[MEDIUM] ctx.roundRect() browser compatibility risk
+- Location: index.html:~747 (drawPlayer function)
+- Explanation: CanvasRenderingContext2D.roundRect() is relatively new (Chrome 99+, Firefox 112+, Safari 16.4+). Older mobile browsers (Android WebView <99, iOS Safari <16.4) will throw TypeError: ctx.roundRect is not a function, crashing the draw loop every frame and freezing the game on those devices.
+- Fix approach: Replace with manual moveTo/lineTo/arc path construction, or add a feature-detect polyfill before use.
+
+[LOW] Alert() in Credits blocks main thread and is unstyled
+- Location: index.html (buildSettingsButtons credits action)
+- Explanation: window.alert() freezes the entire JS event loop until dismissed; also cannot be styled or themed, breaking visual consistency. Acceptable for jam scope but not ideal UX.
+- Fix approach: Replace with in-canvas credits overlay (non-blocking). LOW priority — works correctly, just not elegant.
+
+[LOW] Music interval timing drift over long sessions
+- Location: index.html (startMusic setInterval 125ms)
+- Explanation: setInterval is not sample-accurate; over many minutes the music sequencer can drift slightly from visual/gameplay sync. Not noticeable in short jam sessions.
+- Fix approach: Use AudioContext.currentTime-based lookahead scheduler instead of setInterval. LOW — acceptable for 2-5 min sessions.
+
+RUNTIME (PUPPETEER) RESULTS:
+- 30/30 tests PASS across desktop 1920x1080, desktop-small 800x600, mobile 375x667
+- Page load: PASS all viewports
+- Canvas render 800x1200: PASS all viewports
+- Title -> PLAYING via START button click: PASS all viewports (actual button hit detection verified)
+- Tap strike reduces titan HP (100->99): PASS all viewports (actual interaction mechanic verified)
+- Drag moves player horizontally: PASS all viewports (400->606/762/778)
+- Pause button -> PAUSED state: PASS all viewports
+- Resume -> PLAYING state: PASS all viewports
+- Zero page errors, zero console errors across all viewports
+
+VERDICT: 1 MEDIUM (roundRect compat), 2 LOW. No CRITICAL/HIGH. Proceeding per retry policy — bugfix the MEDIUM, accept LOWs as warnings.
+
+END OF BUGLIST CYCLE 1
+
+FIXED BUGS:
+- [MEDIUM] ctx.roundRect() browser compatibility risk - RESOLVED via manual moveTo/lineTo/arcTo rounded-rectangle path construction (identical visual result, works on all Canvas 2D browsers back to IE-era arcTo support)
+
+Unfixed bugs:
+- [UNFIXED] [LOW] Alert() in Credits blocks main thread - Reason: works correctly, acceptable for jam scope, LOW priority
+- [UNFIXED] [LOW] Music setInterval timing drift - Reason: not noticeable in 2-5min sessions, LOW priority

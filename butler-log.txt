@@ -1,0 +1,17 @@
+BUTLER DEPLOYMENT LOG
+=====================
+Status: SKIPPED — no BUTLER_API_KEY environment variable set, no itch.io username/project supplied.
+Per deployment_agent retry policy: "On exhaustion (2 retries) → Skip upload."
+
+Build artifacts prepared:
+- build/index.html (clean single-file game, 41KB+)
+- description.txt (itch.io page content)
+- tags.txt (recommended tags)
+
+To deploy later:
+1. Set $env:BUTLER_API_KEY="<your-key>"
+2. Ensure butler.exe at .\butler-windows-amd64\butler.exe (or $BUTLER_PATH)
+3. Run: & ".\butler-windows-amd64\butler.exe" push build/ <username>/<project>:html5
+4. Confirm with: & ".\butler-windows-amd64\butler.exe" status
+
+User confirmation required before actual Butler push (per orchestrator rules).

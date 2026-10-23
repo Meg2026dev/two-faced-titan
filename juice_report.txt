@@ -1,0 +1,20 @@
+JUICE FEATURES ADDED:
+- [Visual Feedback] Titan hit-flash white overlay (6-frame decay) — location: drawTitan ~line 743, triggered in doStrike
+- [Visual Feedback] Button border pulse (sin-based alpha 0.7-1.0) — location: drawButtons ~line 1124
+- [Particles] Dodge dust puff trail (2 particles per fast-move, throttled 20px) — location: update player movement ~line 466
+- [Animation Easing] Smooth HP bar drain (lerp 0.15 toward actual titan.hp) — location: drawTitanHP ~line 802, update ~line 427
+- [Screen Transitions] Zone transition teal flash overlay (alpha 1→0 decay) — location: render ~line 664, triggered in checkZoneTransition
+
+EXISTING JUICE (already present from code_agent, retained):
+- [Particles] Hit sparks (gold), confetti bursts (MINT BREAK, zone transitions, victory) — spawnParticles
+- [Screen Shake] On strike, MINT BREAK, player hit, zone transition — shakeMag system
+- [Hit-Stop] 3-8 frame freeze on impacts — hitStop counter
+- [Score/Text Popups] Floating +score, NEAR MISS!, MINT BREAK!, zone banners — popups array
+- [Visual Feedback] Player i-frame flicker, glowing rune pulse on titan weak point, combo meter fill
+
+SKIPPED:
+- [Camera/Motion] Smooth camera follow — not applicable (single-screen fixed arena, direct player control)
+- [Sound Complement] Equalizer bars visual — out of scope for max-5-categories cap
+- [Animation Easing] Squash/stretch on titan land — already partially present in flip apex; not doubled to avoid bloat
+
+All juice wrapped in juiceEnabled flag (togglable). Particle cap 50 maintained. Additive-only, no deletions from working code.
